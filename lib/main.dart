@@ -1,7 +1,20 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
+  final channel = WebSocketChannel.connect(
+    Uri.parse('ws://localhost:9000/your-tally-websocket-endpoint'),
+  );
+
+  channel.stream.listen((message) {
+    if (kDebugMode) {
+      print('Received message: $message');
+    }
+  });
+
+  channel.sink.add('Send your request to Tally');
   runApp(const MyApp());
 }
 
@@ -37,22 +50,94 @@ class _TallySyncScreenState extends State<TallySyncScreen> {
   }
 
   Future<void> fetchTallyData() async {
+    final String xmlCompanyData = '''
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Data</TYPE>
+    <ID>Company</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVCURRENTCOMPANY></SVCURRENTCOMPANY>
+      </STATICVARIABLES>
+    </DESC>
+  </BODY>
+</ENVELOPE>
+    ''';
+    final String xmlVoucherData = '''
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Data</TYPE>
+    <ID>Voucher</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVCURRENTCOMPANY>Your Company Name</SVCURRENTCOMPANY>
+      </STATICVARIABLES>
+    </DESC>
+  </BODY>
+</ENVELOPE>
+    ''';
+    final String xmlLedgerData = '''
+   <ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Data</TYPE>
+    <ID>Ledger</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVCURRENTCOMPANY>Your Company Name</SVCURRENTCOMPANY>
+      </STATICVARIABLES>
+    </DESC>
+  </BODY>
+</ENVELOPE>
+    ''';
+    final String xmlStockData = '''
+    <ENVELOPE>
+      <HEADER>
+        <TALLYREQUEST>Export</TALLYREQUEST>
+        <TYPE>Data</TYPE>
+        <ID>Stock Summary</ID>
+      </HEADER>
+      <BODY>
+        <DESC>
+          <STATICVARIABLES>
+            <SVCURRENTCOMPANY>Your Company Name</SVCURRENTCOMPANY>
+          </STATICVARIABLES>
+        </DESC>
+      </BODY>
+    </ENVELOPE>
+    ''';
+
     try {
-      final response =
-          await http.get(Uri.parse('http://localhost:9000/TallyService'));
+      // Send POST request with XML data
+      final response = await http.post(
+        Uri.parse('http://localhost:9000/TallyService'), // Tally's API endpoint
+        headers: {
+          'Content-Type': 'application/xml'
+        }, // Set the content type to XML
+        body: xmlCompanyData, // Send the XML data as the body
+      );
 
       if (response.statusCode == 200) {
         setState(() {
-          tallyData = response.body;
+          tallyData = response.body; // Display response from Tally
         });
       } else {
         setState(() {
-          tallyData = "Failed to fetch data from Tally.";
+          tallyData =
+              "Failed to fetch data from Tally. Status code: ${response.statusCode}";
         });
       }
     } catch (e) {
       setState(() {
-        tallyData = "Error: $e";
+        tallyData = "Error: $e"; // Handle errors
       });
     }
   }
