@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:tally_connector/api/api_repository.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
@@ -42,6 +44,22 @@ class TallySyncScreen extends StatefulWidget {
 
 class _TallySyncScreenState extends State<TallySyncScreen> {
   String tallyData = "Fetching data...";
+  final ApiRepository _apiRepository = ApiRepository();
+
+  // Api() {
+  //   _dio.options.baseUrl = AppConfig.RAW_BASE_URL;
+  //   _dio.options.headers = DEFAULT_HEADERS;
+
+  //   _dio.interceptors.add(
+  //     PrettyDioLogger(
+  //       requestBody: true,
+  //       requestHeader: true,
+  //       responseBody: true,
+  //       responseHeader: true,
+  //       error: true,
+  //     ),
+  //   );
+  // }
 
   @override
   void initState() {
@@ -117,24 +135,12 @@ class _TallySyncScreenState extends State<TallySyncScreen> {
 
     try {
       // Send POST request with XML data
-      final response = await http.post(
-        Uri.parse('http://localhost:9000/TallyService'), // Tally's API endpoint
-        headers: {
-          'Content-Type': 'application/xml'
-        }, // Set the content type to XML
-        body: xmlCompanyData, // Send the XML data as the body
+      final response = await _apiRepository.connectTally(
+        xmlCompanyData, // Send the XML data as the body
       );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          tallyData = response.body; // Display response from Tally
-        });
-      } else {
-        setState(() {
-          tallyData =
-              "Failed to fetch data from Tally. Status code: ${response.statusCode}";
-        });
-      }
+      setState(() {
+        tallyData = response.body; // Display response from Tally
+      });
     } catch (e) {
       setState(() {
         tallyData = "Error: $e"; // Handle errors
