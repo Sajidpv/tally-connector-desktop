@@ -1,11 +1,8 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -14,87 +11,78 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tally Connector',
+      title: 'Tally Sync',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: TallyConnectorScreen(),
+      home: const TallySyncScreen(),
     );
   }
 }
 
-class TallyConnectorScreen extends StatefulWidget {
-  const TallyConnectorScreen({super.key});
+class TallySyncScreen extends StatefulWidget {
+  const TallySyncScreen({super.key});
 
   @override
-  State<TallyConnectorScreen> createState() => _TallyConnectorScreenState();
+  State<TallySyncScreen> createState() => _TallySyncScreenState();
 }
 
-class _TallyConnectorScreenState extends State<TallyConnectorScreen> {
-  TextEditingController tallyDataController = TextEditingController();
-  bool _isSyncing = false;
+class _TallySyncScreenState extends State<TallySyncScreen> {
+  String tallyData = "Fetching data...";
 
-  // Function to sync data with the Node.js server
-  Future<void> _syncDataToServer(String tallyData) async {
-    setState(() {
-      _isSyncing = true;
-    });
+  @override
+  void initState() {
+    super.initState();
+    fetchTallyData();
+  }
 
-    final response = await http.post(
-      Uri.parse('http://localhost:5001/sync-tally-data'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'tallyData': tallyData}),
-    );
+  Future<void> fetchTallyData() async {
+    try {
+      final response =
+          await http.get(Uri.parse('http://localhost:9000/TallyService'));
 
-    if (response.statusCode == 200) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data synced successfully!')),
-        );
+      if (response.statusCode == 200) {
+        setState(() {
+          tallyData = response.body;
+        });
+      } else {
+        setState(() {
+          tallyData = "Failed to fetch data from Tally.";
+        });
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sync data!')),
-      );
+    } catch (e) {
+      setState(() {
+        tallyData = "Error: $e";
+      });
     }
-
-    setState(() {
-      _isSyncing = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tally Connector'),
+        title: const Text("Tally Sync App"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: tallyDataController,
-              decoration: InputDecoration(labelText: 'Enter Tally Data'),
+            const Text(
+              'Tally Data:',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 10),
+            Text(
+              tallyData,
+              style: const TextStyle(fontSize: 16),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 10,
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _isSyncing
-                  ? null
-                  : () {
-                      final tallyData = tallyDataController.text;
-                      if (tallyData.isNotEmpty) {
-                        _syncDataToServer(tallyData);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Please enter data!')),
-                        );
-                      }
-                    },
-              child: _isSyncing
-                  ? CircularProgressIndicator()
-                  : Text('Sync to Server'),
+              onPressed: fetchTallyData,
+              child: const Text('Fetch Tally Data'),
             ),
           ],
         ),
