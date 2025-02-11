@@ -7,10 +7,10 @@ class API {
   final Dio _dio = Dio();
   CancelToken cancelToken = CancelToken();
   // ignore: non_constant_identifier_names
-  Map<String, dynamic> DEFAULT_HEADERS = {"Content-Type": "application/json"};
+  Map<String, dynamic> DEFAULT_HEADERS = {"Content-Type": "application/xml"};
 
   API() {
-    _dio.options.baseUrl = "http://localhost:9000/";
+    _dio.options.baseUrl = "";
     _dio.options.headers = DEFAULT_HEADERS;
     _dio.interceptors.add(CustomInterceptor(cancelToken: cancelToken));
   }
@@ -48,23 +48,36 @@ class CustomInterceptor extends Interceptor {
     return super.onError(myErr, handler);
   }
 
-  @override
-  void onRequest(
-      RequestOptions options, RequestInterceptorHandler handler) async {
-    // Automatically assign cancelToken to each request
-    options.cancelToken = cancelToken;
+@override
+void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  // Automatically assign cancelToken to each request
+  options.cancelToken = cancelToken;
 
-    final requestPath = options.baseUrl;
-    final path = options.path;
+  final requestPath = options.baseUrl;
+  final path = options.path;
 
+  // Check if the data is XML (or string type)
+  if (options.data is String) {
+    // Log the raw XML data
     logger.i(
-      "'${options.method} onRequest => $requestPath$path' \nRequest Body=> '${jsonEncode(options.data)}'",
+      "'${options.method} onRequest => $requestPath$path' \nRequest Body=> '${options.data}'",
     );
-    logger.i(
-      "",
-    );
-    return super.onRequest(options, handler);
+  } else {
+    // If data is not XML (other data types like Map, etc.), use jsonEncode
+    try {
+      String requestBody = jsonEncode(options.data);  // Try encoding the request body
+      logger.i(
+        "'${options.method} onRequest => $requestPath$path' \nRequest Body=> '$requestBody'",
+      );
+    } catch (e) {
+      logger.e("Failed to encode request body: $e");
+    }
   }
+
+  logger.i("");  // Log an empty line after request info
+  return super.onRequest(options, handler);
+}
+
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
